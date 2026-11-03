@@ -607,6 +607,10 @@ async function executeHongguoDownload(task) {
     if (!viaYtdlp && (!playInfo || !playInfo.url)) {
       throw new Error('Không lấy được địa chỉ phát hợp lệ' + (playInfo && playInfo.error ? ' (' + playInfo.error + ')' : ''));
     }
+    // Trước đây lưu bản xem trước 10 giây rồi báo «Hoàn thành», dễ tưởng đã tải được cả tập
+    if (playInfo && playInfo.preview) {
+      throw new Error('Hongguo chỉ công khai bản xem trước 10 giây (360p) của tập này; bản đầy đủ trên web bị mã hóa nên không tải được');
+    }
 
     // 2. Thư mục tải
     const settings = getCurrentSettings();

@@ -231,7 +231,9 @@ async function fetchPlayUrlFromWeb(vid, sid) {
       if (!/^https?:\/\//i.test(videoUrl)) continue;
       // Với tập không tồn tại/không công khai, web chính thức sẽ trả về trang mặc định của phim (tập 1); vid trong link trực tiếp không phải tập này thì không dùng được
       if (!videoUrl.includes(String(vid))) continue;
-      return { url: videoUrl, spadeA: null, codec: '', source: 'web' };
+      // /video/public/<vid>/360p.mp4 là bản xem trước 10 giây cho máy tìm kiếm. Bản đầy đủ trên web đi qua
+      // /api/video/protected/play-info, là luồng DASH mã hóa CENC (khóa lấy từ player_access_key), app không giải mã
+      return { url: videoUrl, spadeA: null, codec: '', source: 'web', preview: /\/video\/public\//.test(videoUrl) };
     } catch (e) {
       lastErr = e;
     }
