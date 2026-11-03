@@ -1472,18 +1472,22 @@ async function startMerge(seriesId, outputName, options) {
       }
     } catch (_) {}
 
-    // Kiểm tra mẫu tính đồng nhất mã hóa (tập đầu so với các tập lấy mẫu phía sau)
+    // Kiểm tra mọi tập có cùng mã hóa/độ phân giải không. Gộp nhanh (sao chép luồng) mà lẫn độ phân giải thì bản gộp lỗi hình,
+    // chuyện này giờ hay gặp vì yt-dlp hạ tập hỏng xuống ≤720p: khi đó tự chuyển sang gộp tương thích và đưa mọi tập về cùng khung hình
     let codecWarning = '';
+    let compatible = !!(options && options.compatible);
+    let frame = null; // Khung hình đích khi các tập lệch độ phân giải
     if (ffprobePath) {
-      const first = await probeVideoInfo(ffprobePath, ordered[0].path);
-      const sampleIdx = [Math.floor(ordered.length / 2), ordered.length - 1];
-      for (const i of sampleIdx) {
-        if (i <= 0 || i >= ordered.length) continue;
-        const s = await probeVideoInfo(ffprobePath, ordered[i].path);
-        if (first && s && (first.codec !== s.codec || first.w !== s.w || first.h !== s.h)) {
-          codecWarning = `Tập ${ordered[i].vid_index} có mã hóa khác tập đầu (${s.codec} ${s.w}x${s.h} so với ${first.codec} ${first.w}x${first.h}), bản gộp có thể bị lỗi hình`;
-          break;
-        }
+      const infos = [];
+      for (const e of ordered) infos.push(await probeVideoInfo(ffprobePath, e.path));
+      const first = infos[0];
+      const odd = first && infos.findIndex((s) => s && (s.codec !== first.codec || s.w !== first.w || s.h !== first.h));
+      if (odd > 0) {
+        const s = infos[odd];
+        frame = infos.filter(Boolean).reduce((a, b) => (b.w * b.h > a.w * a.h ? b : a));
+        codecWarning = `Tập ${ordered[odd].vid_index} có mã hóa khác tập đầu (${s.codec} ${s.w}x${s.h} so với ${first.codec} ${first.w}x${first.h})`
+          + (compatible ? '' : ', đã tự chuyển sang gộp tương thích (chậm hơn) để bản gộp không lỗi hình');
+        compatible = true;
       }
     }
 
@@ -1523,7 +1527,7 @@ async function startMerge(seriesId, outputName, options) {
 
     // Định dạng tương thích: chuyển mã sang H.264, mọi trình phát/máy tính đều phát được (chậm nhưng phổ biến)
     let videoArgs;
-    if (options && options.compatible) {
+    if (compatible) {
       const encoder = await pickH264Encoder(ffmpegPath);
       videoArgs = encoder === 'libx264'
         ? ['-c:v', 'libx264', '-preset', 'veryfast', '-crf', '23', '-profile:v', 'high', '-level', '4.2']
@@ -1535,6 +1539,8 @@ async function startMerge(seriesId, outputName, options) {
         ? ['-c:v', 'h264_amf', '-quality', 'speed', '-rc', 'cqp', '-qp_i', '23', '-qp_p', '23']
         : ['-c:v', encoder, '-cq', '23'];
       videoArgs = [...videoArgs, '-pix_fmt', 'yuv420p', '-c:a', 'aac', '-b:a', '128k'];
+      // Co giãn giữ tỉ lệ rồi thêm viền đen về khung lớn nhất, để bộ mã hóa luôn nhận một kích thước khung cố định
+      if (frame) videoArgs.push('-vf', `scale=${frame.w}:${frame.h}:force_original_aspect_ratio=decrease,pad=${frame.w}:${frame.h}:(ow-iw)/2:(oh-ih)/2,setsar=1`);
       console.log('[Merge] Gộp ở định dạng tương thích, bộ mã hóa:', encoder);
     } else {
       videoArgs = ['-c', 'copy'];
