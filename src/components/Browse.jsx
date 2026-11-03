@@ -19,7 +19,7 @@ function Browse({ onNavigate }) {
   const [page, setPage] = useState(1);
 
   const [results, setResults] = useState([]);
-  const [meta, setMeta] = useState({ total: 0, totalPages: 0, genres: [] });
+  const [meta, setMeta] = useState({ total: 0, totalPages: 0, genres: [], defaultGenre: '' });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [pageTitle, setPageTitle] = useState('');
@@ -87,7 +87,7 @@ function Browse({ onNavigate }) {
           setResults([]);
         } else {
           setResults(res.results || []);
-          setMeta({ total: res.total || 0, totalPages: res.totalPages || 0, genres: res.genres || [] });
+          setMeta({ total: res.total || 0, totalPages: res.totalPages || 0, genres: res.genres || [], defaultGenre: res.defaultGenre || '' });
           setPageTitle(res.pageTitle || '');
           if (!res.results || res.results.length === 0) {
             setError('Không lấy được nội dung trang này, hãy thử đổi danh mục hoặc dùng “Hiện cửa sổ trình duyệt” để thao tác thủ công');
@@ -383,16 +383,19 @@ function Browse({ onNavigate }) {
       {/* Chip thể loại */}
       {meta.genres.length > 0 && (
         <div className="browse-genres">
-          <button
-            className={`genre-chip ${genre === '' ? 'active' : ''}`}
-            onClick={() => switchGenre('')}
-          >
-            Tất cả
-          </button>
+          {/* Danh mục reelfren: mỗi chip là một nguồn, không có «Tất cả», chưa chọn thì là nguồn mặc định */}
+          {!meta.defaultGenre && (
+            <button
+              className={`genre-chip ${genre === '' ? 'active' : ''}`}
+              onClick={() => switchGenre('')}
+            >
+              Tất cả
+            </button>
+          )}
           {meta.genres.map((g) => (
             <button
               key={g.slug}
-              className={`genre-chip ${genre === g.slug ? 'active' : ''}`}
+              className={`genre-chip ${(genre || meta.defaultGenre) === g.slug ? 'active' : ''}`}
               onClick={() => switchGenre(g.slug)}
             >
               {vi(g.label)}

@@ -155,7 +155,8 @@ async function downloadTo(vid, outPath, { onProgress, onSpawn } = {}) {
     '-o', outPath,
   ];
   if (options.ffmpeg) args.push('--ffmpeg-location', options.ffmpeg);
-  args.push(episodeUrl(vid));
+  // Ngoài vid của nguồn này còn nhận link trực tiếp (luồng HLS .m3u8 của nguồn reelfren)
+  args.push(owns(vid) ? episodeUrl(vid) : vid);
   for (const [i, fmt] of FORMATS.entries()) {
     // Luồng hình và luồng tiếng tải lần lượt, mỗi luồng đếm lại từ 0: cộng dồn để tiến độ không bị nhảy lùi
     let base = 0;

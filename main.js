@@ -629,9 +629,10 @@ async function executeHongguoDownload(task) {
       return;
     }
 
-    if (viaYtdlp) {
+    // Luồng HLS (một số nguồn reelfren) cũng để yt-dlp tải: nó ghép các đoạn .ts thành MP4 và báo tiến độ
+    if (viaYtdlp || playInfo.hls) {
       try {
-        await downloadViaYtdlp(vid, finalPath, {
+        await downloadViaYtdlp(viaYtdlp ? vid : playInfo.url, finalPath, {
           onSpawn: (child) => { task.cancelSource = { cancel: () => child.kill() }; },
           onProgress: (received, total) => {
             task.receivedBytes = received;
@@ -1024,7 +1025,7 @@ const BROWSE_CATEGORIES = [
   { slug: 'comic-drama', label: 'Phim hoạt hình' },
   { slug: 'ai-drama', label: 'Phim AI' },
   { slug: 'comic', label: 'Truyện tranh' },
-  { slug: 'pinedrama', label: 'PineDrama' }, // Dùng API reelfren, không qua trình duyệt nhúng
+  { slug: 'reelfren', label: 'Nguồn reelfren' }, // PineDrama, ShortMax, NetShort... qua API reelfren, không qua trình duyệt nhúng
 ];
 
 ipcMain.handle('browse-categories', async () => BROWSE_CATEGORIES);
@@ -1036,9 +1037,11 @@ ipcMain.handle('browse-list', async (event, options) => {
     const gen = String(genre).replace(/[^a-z0-9-]/gi, '');
     const pg = Math.max(1, parseInt(page, 10) || 1);
 
-    if (cat === 'pinedrama') {
-      const results = await reelfren.listHome();
-      return { success: true, results, page: 1, totalPages: 1, total: results.length, genres: [], pageTitle: '' };
+    // Mỗi nhà cung cấp là một chip (dùng hàng chip thể loại), không có mục «Tất cả» vì gộp hơn 50 nguồn thì quá chậm
+    if (cat === 'reelfren' || cat === 'pinedrama') {
+      const results = await reelfren.listHome(gen || reelfren.DEFAULT_PROVIDER);
+      const genres = reelfren.PROVIDERS.map((p) => ({ slug: p.id, label: p.name }));
+      return { success: true, results, page: 1, totalPages: 1, total: results.length, genres, defaultGenre: reelfren.DEFAULT_PROVIDER, pageTitle: '' };
     }
 
     let url = `${SEARCH_SITE}/category/${cat}`;
@@ -1066,13 +1069,13 @@ ipcMain.handle('search-series', async (event, keyword) => {
   const kw = String(keyword || '').trim();
   if (!kw) return { success: false, error: 'Vui lòng nhập từ khóa tìm kiếm' };
   try {
-    // Tìm song song trên Hongguo, PineDrama và Bilibili, một bên lỗi không ảnh hưởng bên khác
+    // Tìm song song trên Hongguo, mọi nguồn reelfren và Bilibili, một bên lỗi không ảnh hưởng bên khác
     const [hg, pd, bl] = await Promise.allSettled([
-      runSearchSniff(kw), reelfren.search(kw), runSniffOnUrl(BILI_SEARCH_URL(kw), 'BiliSearch', 'bili'),
+      runSearchSniff(kw), reelfren.searchAll(kw), runSniffOnUrl(BILI_SEARCH_URL(kw), 'BiliSearch', 'bili'),
     ]);
     const hgRes = hg.status === 'fulfilled' ? hg.value : { success: false, error: hg.reason && hg.reason.message };
     const pdList = pd.status === 'fulfilled' ? pd.value : [];
-    if (pd.status === 'rejected') console.warn('[Search] PineDrama thất bại:', pd.reason && pd.reason.message);
+    if (pd.status === 'rejected') console.warn('[Search] reelfren thất bại:', pd.reason && pd.reason.message);
     const blList = (bl.status === 'fulfilled' && bl.value.results) || [];
     if (bl.status === 'rejected') console.warn('[Search] Bilibili thất bại:', bl.reason && bl.reason.message);
     if (!hgRes.success && !pdList.length && !blList.length) return hgRes;
@@ -1947,17 +1950,18 @@ function registerLocalProtocol() {
 
 /** Tải cả tập vào bộ nhớ rồi giải mã (khi dự phòng qua trang chính thức thì link là MP4 không mã hóa, bỏ qua giải mã) */
 async function fetchDecryptedEpisode(vid, onProgress, seriesId) {
-  if (ytdlp.owns(vid)) {
+  const viaYtdlp = ytdlp.owns(vid);
+  const playInfo = viaYtdlp ? null : await sourceFor(vid).fetchPlayUrlSingle(vid, seriesId);
+  if (!viaYtdlp && (!playInfo || !playInfo.url)) throw new Error('Không lấy được địa chỉ phát hợp lệ' + (playInfo && playInfo.error ? ' (' + playInfo.error + ')' : ''));
+  if (viaYtdlp || playInfo.hls) {
     const tmp = path.join(app.getPath('temp'), `online_${sanitizeFolderName(vid)}_${Date.now()}.mp4`);
     try {
-      await downloadViaYtdlp(vid, tmp, { onProgress });
+      await downloadViaYtdlp(viaYtdlp ? vid : playInfo.url, tmp, { onProgress });
       return fs.readFileSync(tmp);
     } finally {
       try { fs.unlinkSync(tmp); } catch (_) {}
     }
   }
-  const playInfo = await sourceFor(vid).fetchPlayUrlSingle(vid, seriesId);
-  if (!playInfo || !playInfo.url) throw new Error('Không lấy được địa chỉ phát hợp lệ' + (playInfo && playInfo.error ? ' (' + playInfo.error + ')' : ''));
 
   let headers = { 'User-Agent': hongguo.UA };
   let response;

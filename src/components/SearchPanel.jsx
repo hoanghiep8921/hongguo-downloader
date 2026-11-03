@@ -116,7 +116,7 @@ function SearchPanel({ onSelectSeries, onSwitchToInput, onNavigate }) {
         </button>
       </div>
       <p className="settings-hint" style={{ marginTop: 8 }}>
-        Từ khóa sẽ được tìm trên hongguoduanju.com, Bilibili (trình duyệt tích hợp) và PineDrama (qua reelfren); chọn một kết quả để lấy toàn bộ tập và tải xuống ngay.
+        Từ khóa sẽ được tìm trên hongguoduanju.com, Bilibili (trình duyệt tích hợp) và hơn 50 nguồn reelfren như PineDrama, ShortMax, NetShort (tối đa 10 phim mỗi nguồn); chọn một kết quả để lấy toàn bộ tập và tải xuống ngay.
       </p>
 
       {error && <div className="alert alert-error">{error}</div>}

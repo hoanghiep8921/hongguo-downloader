@@ -22,7 +22,7 @@ Công cụ desktop Windows dành cho **phim ngắn Hongguo (Hồng Quả — kê
 **engine giải mã luồng CENC-AES-CTR thuần (native)**: có thể duyệt/tìm kiếm phim, tải hàng loạt theo tập đã chọn và tự động giải mã thành
 MP4 không watermark; kết hợp trình phát tích hợp, xem trực tuyến và gộp một chạm, tạo thành vòng khép kín «khám phá → tải → xem → dọn dẹp».
 
-Ngoài Hongguo, ứng dụng còn có nguồn **PineDrama** (qua API reelfren) và **Bilibili / Douyin / Ixigua** (dán link, tải qua [yt-dlp](https://github.com/yt-dlp/yt-dlp)).
+Ngoài Hongguo, ứng dụng còn có **hơn 50 nguồn phim ngắn qua reelfren** (PineDrama, ShortMax, NetShort, DramaWave…) và **Bilibili / Douyin / Ixigua** (dán link, tải qua [yt-dlp](https://github.com/yt-dlp/yt-dlp)).
 
 > **Nguồn gốc và tuyên bố sửa đổi**: Kho mã này là **phiên bản đã sửa đổi** của
 > [327044572/hongguo-downloader](https://github.com/327044572/hongguo-downloader) (sửa đổi từ tháng 9/2026),
@@ -103,7 +103,7 @@ lưu xong là có hiệu lực ngay, không cần khởi động lại.
 - Mở bất kỳ phim nào là tự động lấy **danh sách toàn bộ tập** (tên phim, ảnh bìa, tổng số tập, tiêu đề và `vid` của từng tập) và ghi vào hồ sơ phim cục bộ
 - Việc dò chỉ dựa vào `series_id` trong link, không phụ thuộc tên class giao diện của trang, nên khó bị hỏng khi trang đổi giao diện
 - Khi thất bại có thể bật «Hiện cửa sổ trình duyệt» để xử lý thủ công
-- Nguồn thứ hai **PineDrama** được lấy qua API reelfren (`src/native/reelfren.js`)
+- **Nguồn reelfren** (`src/native/reelfren.js`): tab Duyệt → «Nguồn reelfren», mỗi chip là một nhà cung cấp; tìm kiếm chạy trên mọi nguồn (tối đa 10 phim mỗi nguồn). Nguồn trả MP4 thì tải thẳng, nguồn trả HLS (.m3u8) thì tải qua yt-dlp. Kiểm tra từng nguồn: `node scripts/verify-reelfren.js <provider…>`
 - Tìm kiếm cũng trả về video **Bilibili** (dò search.bilibili.com bằng cửa sổ ẩn riêng, chạy song song với Hongguo); bị captcha thì bật «Hiện cửa sổ trình duyệt» để tự giải
 - **Bilibili / Douyin / Ixigua**: dán link `bilibili.com/video/BV…`, `b23.tv/…`, `douyin.com/video/<id>`, `v.douyin.com/…` hoặc `ixigua.com/<id>` vào ô phân tích; video nhiều phần (P1, P2…) mỗi phần là một tập. Douyin/Ixigua cần chọn trình duyệt lấy cookie trong Cài đặt (`src/native/ytdlp.js`)
 
@@ -345,7 +345,7 @@ Chỉ cần file còn, bản ghi có thể dựng lại được.
 │   ├── native/
 │   │   ├── hongguo.js            # Giao thức lõi: phân tích API, dẫn xuất khoá spade_a,
 │   │   │                         #   giải mã CENC-AES-CTR (bản file + bản bộ nhớ)
-│   │   ├── reelfren.js           # Nguồn PineDrama qua API reelfren
+│   │   ├── reelfren.js           # Hơn 50 nguồn phim ngắn qua API reelfren
 │   │   └── ytdlp.js              # Nguồn Bilibili / Ixigua qua yt-dlp
 │   └── components/
 │       ├── Browse.jsx            # Trang duyệt: phân loại / thể loại / phân trang / ngăn kéo chi tiết
